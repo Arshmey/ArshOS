@@ -3,8 +3,8 @@
 
 section .data
 codeName db 'Codename: ArshOS', 0Ah, 0Dh, 00h 												;Кодовое имя проета
-loadMsg db 'SiriusRPG Operation System Loaded', 0Ah, 0Dh, 00h								;Привественное сообщение
-verKernelMsg db 'Version SK: 0.5', 0Ah, 0Dh, 00h 											;Версия ядра сообщение
+loadMsg db 'Arshmey Operation System Loaded', 0Ah, 0Dh, 00h								;Привественное сообщение
+verKernelMsg db 'Version AK: 0.5.1', 0Ah, 0Dh, 00h 											;Версия ядра сообщение
 host db 'user>: ', 00h
 debugMsg1 db 'debugMsg1', 0Ah, 0Dh, 00h 													;Отладочное сообщение 1
 debugMsg2 db 'debugMsg2', 0Ah, 0Dh, 00h 													;Отладочное сообщение 2
@@ -14,7 +14,7 @@ helpCommand	db 'h', 'e', 'l', 'p'															;Команда
 helpCommandLen equ $-helpCommand															;Длинна команды
 
 ;Действие комманды
-helpCommandAction db 0Ah, 0Dh, 'Command', 0Ah, 0Dh, 'help - Show commands', 0Ah, 0Dh, 'time - Show time', 0Ah, 0Dh, 00h
+helpCommandAction db 0Ah, 0Dh, 'Command', 0Ah, 0Dh, 'help - Show commands', 0Ah, 0Dh, 'time - Show time', 0Ah, 0Dh, 'clear - Clear console', 0Ah, 0Dh, 00h
 timeCommand db 't', 'i', 'm', 'e'															;Команда
 timeCommandLen equ $-timeCommand															;Длинна команда
 
@@ -33,6 +33,7 @@ global kernel_hello
 kernel_hello:
 	mov dl, 0
 	call setupScreen
+	call clearScreen
 	mov bx, codeName
 	call print
 	mov bx, loadMsg
@@ -198,7 +199,24 @@ quite:
 	ret
 
 setupScreen:
-	mov ah, 0
-    mov al, 02h
+    mov al, 08h
+	mov ah, 00h
     int 10h
 ret
+
+clearScreen:
+	mov al, 0
+	mov bh, 07h
+	mov ch, 0
+	mov cl, 0
+	mov dh, 160
+	mov dl, 200
+	mov ah, 07h
+    int 10h
+
+	mov bh, 00h
+	mov dh, 0																			;Change Y
+	mov dl, 0																			;Change X
+	mov ah, 02h
+    int 10h
+	ret
