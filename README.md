@@ -6,5 +6,5 @@ How to compile and run
 3. Run unite.bat
 
 PS You have problem? See below
-If dont't run, you haven't qemu. Download in official site.
-If don't compile. Download in official site NASM and setup path in Windows Enviroment.
+1. If dont't run, you haven't qemu. Download in official site.
+2. If don't compile. Download in official site NASM and setup path in Windows Enviroment.
