@@ -2,21 +2,27 @@
 [bits 16]
 
 section .data
-codeName db 'Codename: ArshOS', 0Ah, 0Dh, 00h 												;Кодовое имя проета
-loadMsg db 'Arshmey Operation System Loaded', 0Ah, 0Dh, 00h								;Привественное сообщение
-verKernelMsg db 'Version AK: 0.5.1', 0Ah, 0Dh, 00h 											;Версия ядра сообщение
+codeName db 'Codename: ArshOS', 0Ah, 0Dh, 00h 												;Кодовое имя проекта
+loadMsg db 'Arshmey Operation System Loaded', 0Ah, 0Dh, 00h								    ;Привественное сообщение
+verKernelMsg db 'Version AK: 0.5.1', 0Ah, 0Dh, 00h 											;Версия ядра
 host db 'user>: ', 00h
 debugMsg1 db 'debugMsg1', 0Ah, 0Dh, 00h 													;Отладочное сообщение 1
 debugMsg2 db 'debugMsg2', 0Ah, 0Dh, 00h 													;Отладочное сообщение 2
 
 unknownCommand db 0Ah, 0Dh, 'Unknown command', 0Ah, 0Dh, 00h								;Сообщение о неизвестной команде
 helpCommand	db 'h', 'e', 'l', 'p'															;Команда
-helpCommandLen equ $-helpCommand															;Длинна команды
+helpCommandLen equ $-helpCommand															;Длина команды
 
 ;Действие комманды
 helpCommandAction db 0Ah, 0Dh, 'Command', 0Ah, 0Dh, 'help - Show commands', 0Ah, 0Dh, 'time - Show time', 0Ah, 0Dh, 'clear - Clear console', 0Ah, 0Dh, 00h
 timeCommand db 't', 'i', 'm', 'e'															;Команда
-timeCommandLen equ $-timeCommand															;Длинна команда
+timeCommandLen equ $-timeCommand															;Длина команды
+
+timeCommandAction db 'Current time: 09:41', 0Ah, 0Dh, 0
+
+
+clearCommand db 'c', 'l', 'e', 'a', 'r'
+clearCommandLen equ $-clearCommand
 
 backspaceLine db 08h, ' ', 08h, 00h															;Удаление символа
 enterPrint db 0Ah, 0Dh, 00h																	;Перенос на следующую строку
@@ -81,7 +87,7 @@ keyboardDriver:
 	mov ah, 00h
 	int 16h
 	mov dh, 0
-	
+
 	cmp al, 08h
 	je backspaceCode
 	cmp al, 0Dh
@@ -98,7 +104,7 @@ keyboardDriver:
 keyNotPress:
 	mov dh, 1
 	ret
-	
+
 backspaceCode:
 	mov dh, 1
 	cmp byte [charBufferLen], 0
@@ -140,50 +146,116 @@ enterCode:
 
 	clear:
 	mov byte [chars + di], 0
-    inc di 
+    inc di
 	loop clear
 
 	mov byte [charBufferLen], 0
 	call commandExec
 	ret
 
-commandExec:											;Сдлеай ёбанный switch для блятских комманд.
-	mov di, 0
-	mov bx, helpCommand
-	movzx cx, byte [commandLen]
+; ============================================================
+; Производит проверку на существование команды, выполняет команду.
+; 
+;
+;                                      
+commandExec:
+											;Сдлеай ёбанный switch для блятских комманд.
+											;Все еще актуально :)
 
-	cmp cx, helpCommandLen
-	jne notExistCommand
 
-	checkLoop:
-	mov al, [command + di]
-	cmp al, [bx + di]
-	jne notExistCommand
-	inc di
-	loop checkLoop
+    checkHelp:                                  ; ===============================================
+                                                ; Проверка на команду help
+
+        mov si, 0                               ;
+    	movzx cx, byte [commandLen]             ; Указатель на строку с командой пользователя
+        mov bx, helpCommand                     ; Указатель на команду help
+
+    	checkHelpLoop:                          ; =======
+
+    	    mov al, [command + si]
+    	    mov ah, [bx + si]
+    	    cmp al, ah
+    	    jne checkTime
+    	    inc si
+    	    loop checkHelpLoop
 
 	call helpExec
+	jmp postExec
 
-	postExec:
-	mov di, 0
-	movzx cx, byte [commandLen]
+    checkTime:                                  ; =======================   
+                                                ; Проверка на команду time
+        mov bx, timeCommand                     ; !! ВНИМАНИЕ !! : на месте time заглушка, эта команда не выдает время (по крайней мере пока)
+        movzx cx , byte [ commandLen ]          ; Принцип аналогичен циклу выше.
+        mov si, 0
+        checkTimeLoop:
+    	    mov al, [ command + si ]
+            mov ah, [ bx + si ]
+            cmp al, ah
+            jne checkClear
+            inc si
+            loop checkTimeLoop
+
+    call timeExec
+    jmp postExec
+
+
+    checkClear:                                     ; =======================
+        mov bx, clearCommand                        ; Проверка на команду clear
+        movzx cx , byte [ commandLen ]              ; Принцип аналогичен циклу выше и выше.
+        mov si, 0
+        checkClearLoop:
+    	    mov al, [ command + si ]
+            mov ah, [ bx + si ]
+            cmp al, ah
+            jne notExistCommand
+            inc si
+            loop checkClearLoop
+
+    call clearExec
+    jmp postExec
+
+	postExec:                                       ; Выполнение пост-командных операций:
+	mov di, 0                                       ; - Задание указателю команды значения 0
+	movzx cx, byte [commandLen]                     ; - Очистка commandLen (задание длины 0)
 	mov byte [commandLen], 0
 
-	clearCommand:
+	clearCommandBuffer:                             ; - Очистка буфера команды в цикле
 	mov byte [command + di], 0
-    inc di 
-	loop clearCommand
+    inc di
+	loop clearCommandBuffer
 	ret
+
+
+; ========================================================================
+; Секция с командами
+; ========================================================================
 
 helpExec:
 	mov bx, helpCommandAction
 	call print
 	ret
 
+timeExec:
+    mov bx, timeCommandAction
+    call print
+    ret
+
+clearExec:
+    call clearScreen
+    ret
+
+
 notExistCommand:
 	mov bx, unknownCommand
 	call print
 	jmp postExec
+
+
+
+
+; ===============================================================
+; Дебаггинг
+; ===============================================================
 
 quiteDebug:
 	mov bx, debugMsg1
@@ -197,6 +269,13 @@ quiteDebug2:
 
 quite:
 	ret
+
+
+
+
+; =============================================
+; Служебные команды 
+; =============================================
 
 setupScreen:
     mov al, 08h
@@ -220,3 +299,4 @@ clearScreen:
 	mov ah, 02h
     int 10h
 	ret
+
